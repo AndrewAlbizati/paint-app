@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:paint_app/drawing_painter.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,15 +15,18 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// This Widget contains the user interface as well as some of the logic
+/// For the canvas and the color picker
 class DrawingBoard extends StatefulWidget {
   @override
   _DrawingBoardState createState() => _DrawingBoardState();
 }
 
 class _DrawingBoardState extends State<DrawingBoard> {
-  Color selectedColor = Colors.black;
-  double strokeWidth = 5;
-  List<DrawingPoint?> drawingPoints = [];
+  Color selectedColor = Colors.black; // Default color of the user's pen
+  double strokeWidth = 10; // Default width of the user's pen
+  List<DrawingPoint?> drawingPoints = []; // List of points the user has colored
+  // Create list of colors available to the user
   List<Color> colors = [
     Colors.black,
     const Color.fromARGB(255, 255, 17, 0),
@@ -36,12 +40,19 @@ class _DrawingBoardState extends State<DrawingBoard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      appBar: AppBar(
+        title: Text(
+          'Paint App',
+          style: TextStyle(fontSize: 25),
+        ),
+      ),
+      body: Column(
         children: [
-          GestureDetector(
-            onPanStart: (details) {
-              setState(() {
-                drawingPoints.add(
+          Expanded(
+            child: GestureDetector(
+              // When panning, add points to the drawingPoints list
+              onPanStart: (details) => setState(
+                () => drawingPoints.add(
                   DrawingPoint(
                     details.localPosition,
                     Paint()
@@ -50,12 +61,10 @@ class _DrawingBoardState extends State<DrawingBoard> {
                       ..strokeWidth = strokeWidth
                       ..strokeCap = StrokeCap.round,
                   ),
-                );
-              });
-            },
-            onPanUpdate: (details) {
-              setState(() {
-                drawingPoints.add(
+                ),
+              ),
+              onPanUpdate: (details) => setState(
+                () => drawingPoints.add(
                   DrawingPoint(
                     details.localPosition,
                     Paint()
@@ -64,33 +73,33 @@ class _DrawingBoardState extends State<DrawingBoard> {
                       ..strokeWidth = strokeWidth
                       ..strokeCap = StrokeCap.round,
                   ),
-                );
-              });
-            },
-            onPanEnd: (details) => setState(() => drawingPoints.add(null)),
-            child: CustomPaint(
-              painter: _DrawingPainter(drawingPoints),
-              child: Container(
-                height: MediaQuery.of(context).size.height,
-                width: MediaQuery.of(context).size.width,
+                ),
+              ),
+              // Add null to signify that the pan has ended
+              onPanEnd: (details) => setState(() => drawingPoints.add(null)),
+              child: CustomPaint(
+                painter: DrawingPainter(drawingPoints),
+                child: Container(),
               ),
             ),
           ),
-          Positioned(
-            top: 40,
-            right: 30,
+          Container(
+            color: Colors.grey[200],
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Slider for pen thickness
                 Slider(
-                  min: 0,
-                  max: 40,
+                  min: 10,
+                  max: 30,
                   value: strokeWidth,
                   onChanged: (val) => setState(() => strokeWidth = val),
                 ),
+                // Erase button
                 ElevatedButton.icon(
                   onPressed: () => setState(() => drawingPoints = []),
                   icon: Icon(Icons.clear),
-                  label: Text('Clear Board'),
+                  label: Text('Clear'),
                 ),
               ],
             ),
@@ -103,9 +112,10 @@ class _DrawingBoardState extends State<DrawingBoard> {
           padding: EdgeInsets.all(10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            // Create list of color picker widgets
             children: List.generate(
               colors.length,
-              (index) => _buildColorChose(colors[index]),
+              (index) => _buildColorPicker(colors[index]),
             ),
           ),
         ),
@@ -113,48 +123,21 @@ class _DrawingBoardState extends State<DrawingBoard> {
     );
   }
 
-  Widget _buildColorChose(Color color) {
+  Widget _buildColorPicker(Color color) {
     bool isSelected = selectedColor == color;
     return GestureDetector(
       onTap: () => setState(() => selectedColor = color),
       child: Container(
+        // Make picker larger if selected
         height: isSelected ? 47 : 40,
         width: isSelected ? 47 : 40,
+        // Add black border if selected
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
+          border: isSelected ? Border.all(color: Colors.black, width: 3) : null,
         ),
       ),
     );
   }
-}
-
-class _DrawingPainter extends CustomPainter {
-  final List<DrawingPoint?> drawingPoints;
-
-  _DrawingPainter(this.drawingPoints);
-
-  List<Offset> offsetsList = [];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (int i = 0; i < drawingPoints.length - 1; i++) {
-      DrawingPoint? current = drawingPoints[i];
-      DrawingPoint? next = drawingPoints[i + 1];
-      if (current != null && next != null) {
-        canvas.drawLine(current.offset, next.offset, current.paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class DrawingPoint {
-  Offset offset;
-  Paint paint;
-
-  DrawingPoint(this.offset, this.paint);
 }
